@@ -1,31 +1,31 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
-from pathlib import Path
-
-from app.utils import extract_text_from_pdf
-from app.qa_chain import build_qa_chain
-from app.vectorstore import build_vectorstore_from_pdf  # ✅ Import function only
-
 from langchain_community.llms import LlamaCpp
 from langchain.chains import RetrievalQA
+from app.vectorstore import build_vectorstore_from_pdf
+import os
 
 app = FastAPI()
-session_store = {}
-
-# Load your local LLM (Mistral, etc.)
-llm = LlamaCpp(model_path="./models/mistral-7b-instruct-v0.1.Q4_K_M.gguf", n_ctx=4096)
 vectorstore = None
+
+# ✅ Load your local model with multithreading and streaming
+llm = LlamaCpp(
+    model_path="./models/mistral-7b-instruct-v0.1.Q4_K_M.gguf",
+    n_ctx=4096,
+    n_threads=os.cpu_count(),   # Use all available CPU cores
+    streaming=False             # Set to True if you want real-time token streaming
+)
 
 @app.post("/upload")
 async def upload_pdf(file: UploadFile = File(...)):
     global vectorstore
 
-    contents = await file.read()
+    # Save uploaded file to disk
     path = f"documents/{file.filename}"
     with open(path, "wb") as f:
-        f.write(contents)
+        f.write(await file.read())
 
-    # ✅ Build and store vectorstore
+    # Build vector store from PDF
     vectorstore = build_vectorstore_from_pdf(path)
 
     return {"status": "PDF processed successfully"}
@@ -37,13 +37,14 @@ async def ask_question(query: str):
     if vectorstore is None:
         return JSONResponse(status_code=400, content={"error": "Upload a PDF first."})
 
-    # ✅ Limit retrieved chunks to 3 (or even 2 if needed)
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+    # ✅ Retrieve top 2-3 chunks only
+    retriever = vectorstore.as_retriever(search_kwargs={"k": 2})
 
+    # Use `stuff` if you trust the data fits in context window
     qa_chain = RetrievalQA.from_chain_type(
         llm=llm,
         retriever=retriever,
-        chain_type="map_reduce",
+        chain_type="stuff",  # much faster than map_reduce/refine
         return_source_documents=True
     )
 
