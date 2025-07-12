@@ -8,8 +8,8 @@ def build_vectorstore_from_pdf(file_path: str):
     documents = loader.load()
 
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=256,       # 🔽 smaller chunks
-        chunk_overlap=30      # 🔽 less overlap
+        chunk_size=256,      
+        chunk_overlap=30     
     )
     chunks = text_splitter.split_documents(documents)
 
