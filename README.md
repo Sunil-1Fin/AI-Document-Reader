@@ -15,3 +15,5 @@
 3. Till now only PDF file is acceptable
 
 4. Use /upload route to upload the PDF Document
+
+5. Use /ask route to query and ask date from the uploaded pdf

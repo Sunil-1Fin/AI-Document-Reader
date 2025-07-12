@@ -69,6 +69,7 @@ async def ask_question(query: str):
         #     result = qa_chain.invoke({"query": prompt})
         #     result_dict[key] = result["result"]
         # # return {"answer": result["result"]}
+        
         result = qa_chain.invoke({"query": query})
         result = result["result"]
         return {"answer": result}
